@@ -62,22 +62,6 @@ public class GeneratePluginMojo extends AbstractMojo {
 	 * @readonly
 	 */
 	protected MavenProject project;
-
-	/**
-	 * The container project artifact
-	 * 
-	 * @parameter default-value= ""
-	 * @required
-	 */
-	private String containerArtifact = "";
-	
-	/**
-	 * The api project artifact
-	 * 
-	 * @parameter default-value= ""
-	 * @required
-	 */
-	private String apiArtifact = "";
 		
 	/**
 	 * @component
@@ -87,33 +71,14 @@ public class GeneratePluginMojo extends AbstractMojo {
 	@SuppressWarnings("unchecked")
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		
-		listDependencies(project);
 		
-		if(!project.getBasedir().getParentFile().getName().equals("plugins")) {
-			return;
-		}
+		listDependencies(project);
 		
 		getLog().info(project.getBasedir().getAbsolutePath());
 		getLog().info(project.getExecutionProject().getBasedir().getAbsolutePath());
+
+		MavenProject rootProject = project.getParent();
 		
-		MavenProject pluginProject = project.getParent();
-		MavenProject rootProject = pluginProject.getParent();
-		MavenProject containerProject = null;
-		MavenProject apiProject = null;
-		
-		for(MavenProject p : ((List<MavenProject>)rootProject.getCollectedProjects())) {
-			if(p.getArtifactId().equals(containerArtifact)) {
-				containerProject = p;
-			}
-			if(p.getArtifactId().equals(apiArtifact)) {
-				apiProject = p;
-			}
-		}
-		
-		if(apiProject==null || containerProject==null) {
-			throw new MojoFailureException("API or container artifacts could not be found");
-			
-		}
 		getLog().info("Building dependencies for plugin " + project.getArtifactId());
 		
 		try {
@@ -149,7 +114,7 @@ public class GeneratePluginMojo extends AbstractMojo {
 			generateProperties(zip);
 			
 			zipAndRecurse(targetClasses, targetDir, zip);
-			
+
 			for (Artifact a : ((Set<Artifact>)project.getArtifacts())) {
 
 				if(a.getScope().equalsIgnoreCase("system")) {
@@ -157,20 +122,6 @@ public class GeneratePluginMojo extends AbstractMojo {
 				}
 				
 				if(a.getScope().equalsIgnoreCase("test")) {
-					continue;
-				}
-				
-				if(checkArtifact(containerProject, a)) {
-					getLog().info(
-							"Skipping " + a.getArtifactId()
-									+ " because its part of the container project");
-					continue;
-				}
-				
-				if(checkArtifact(apiProject, a)) {
-					getLog().info(
-							"Skipping " + a.getArtifactId()
-									+ " because its part of the API project");
 					continue;
 				}
 				
