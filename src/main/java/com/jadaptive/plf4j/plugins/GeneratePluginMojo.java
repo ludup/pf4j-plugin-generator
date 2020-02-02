@@ -24,7 +24,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -231,25 +230,6 @@ public class GeneratePluginMojo extends AbstractMojo {
 		for(Artifact a : ((Set<Artifact>)project.getArtifacts())) {
 			getLog().info(a.getGroupId() + ":" + a.getArtifactId() + ":" + a.getVersion());
 		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private boolean checkArtifact(MavenProject project, Artifact artifact) {
-		
-		if(project.getArtifactId().equals(artifact.getArtifactId())) {
-			return true;
-		}
-		for(Artifact a : ((Set<Artifact>)project.getArtifacts())) {
-			if(a.getArtifactId().equals(artifact.getArtifactId())
-					&& a.getGroupId().equals(artifact.getGroupId())) {
-				if(a.getVersion().equals(artifact.getVersion())) {
-					return true;
-				}
-				getLog().warn("Artifact " + artifact.getArtifactId() + " has different version in container or API container=" + a.getVersion() + " plugin=" + artifact.getVersion());
-				return false;
-			}
-		}
-		return false;
 	}
 
 	private void zipAndRecurse(File file, File parent, ZipOutputStream zip) throws FileNotFoundException, IOException {
