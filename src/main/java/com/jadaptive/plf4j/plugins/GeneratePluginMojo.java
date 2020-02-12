@@ -150,10 +150,7 @@ public class GeneratePluginMojo extends AbstractMojo {
 			FileUtils.fileWrite(md5File.getAbsolutePath(), DigestUtils.md5Hex(new FileInputStream(zipfile)));
 			
 			getLog().info("MD5 sum value is " + IOUtil.toString(new FileInputStream(md5File)));
-			
-			getLog().info("Copying archive to local store " + storeTarget.getAbsolutePath());
-			
-			FileUtils.copyFile(zipfile, storeTarget);
+		
 			
 		} catch (Exception e) {
 			getLog().error(e);
