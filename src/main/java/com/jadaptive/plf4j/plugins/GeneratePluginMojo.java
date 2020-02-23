@@ -22,8 +22,14 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -31,7 +37,6 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -39,16 +44,12 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.StringUtils;
+import org.pf4j.update.PluginInfo;
+import org.pf4j.update.PluginInfo.PluginRelease;
 
-/**
- * Generates the dependencies properties file
- * 
- * @version $Id: $
- * @goal generate-plugin
- * @phase package
- * @requiresDependencyResolution runtime
- * @description Generates the dependencies for plugin generation
- */
+import com.google.gson.Gson;
+
+
 public class GeneratePluginMojo extends AbstractMojo {
 
 	protected static final String SEPARATOR = "/";
@@ -56,17 +57,21 @@ public class GeneratePluginMojo extends AbstractMojo {
 	/**
 	 * The maven project.
 	 * 
-	 * @parameter expression="${project}"
+	 * @parameter property="project"
 	 * @required
 	 * @readonly
 	 */
 	protected MavenProject project;
-		
+	
 	/**
-	 * @component
+	 * The repository path
+	 * 
+	 * @parameter default-value= ""
+	 * @required
 	 */
-	protected ArtifactFactory factory;
+	protected String repositoryPath;
 
+	
 	@SuppressWarnings("unchecked")
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		
@@ -144,13 +149,10 @@ public class GeneratePluginMojo extends AbstractMojo {
 			}
 
 			zip.close();
-			
-			// Generate an MD5 hash
-			File md5File = new File(extensionDef, project.getArtifactId() + "-"	+ project.getVersion() + ".md5");
-			FileUtils.fileWrite(md5File.getAbsolutePath(), DigestUtils.md5Hex(new FileInputStream(zipfile)));
-			
-			getLog().info("MD5 sum value is " + IOUtil.toString(new FileInputStream(md5File)));
-		
+
+			addToRepository(zipfile,
+					DigestUtils.sha512Hex(new FileInputStream(zipfile)),
+					new File(repositoryPath));
 			
 		} catch (Exception e) {
 			getLog().error(e);
@@ -159,6 +161,72 @@ public class GeneratePluginMojo extends AbstractMojo {
 		} 
 	}
 	
+	@SuppressWarnings("unchecked")
+	private void addToRepository(File zipfile, String sha512Hash, File repositoryPath) throws IOException {
+		
+		Gson gson = new Gson();
+		
+		List<PluginInfo> pluginsInfo = new ArrayList<>();
+		File pluginsFile = new File(repositoryPath, "plugins.json");
+		pluginsFile.getParentFile().mkdirs();
+		if(pluginsFile.exists()) {
+			try(InputStream in = new FileInputStream(pluginsFile)) {
+				pluginsInfo = (List<PluginInfo>) gson.fromJson(new InputStreamReader(in), List.class);
+			}
+		}
+		
+		String pluginId = project.getProperties().getProperty("plugin.id");
+		String pluginDescription = project.getDescription();
+		String pluginName = project.getName();
+		String pluginProjectUrl = project.getProperties().getProperty("plugin.projectUrl");
+		String pluginProvider = project.getProperties().getProperty("plugin.provider");
+		String pluginDependencies = project.getProperties().getProperty("plugin.dependencies");
+		
+		PluginInfo thisPlugin = null;
+		for(PluginInfo pluginInfo : pluginsInfo) {
+			if(pluginInfo.id.equals(pluginId)) {
+				thisPlugin = pluginInfo;
+				break;
+			}
+		}
+		
+		if(Objects.isNull(thisPlugin)) {
+			thisPlugin = new PluginInfo();
+			thisPlugin.id = pluginId;
+			thisPlugin.description = pluginDescription;
+			thisPlugin.name = pluginName;
+			thisPlugin.projectUrl = pluginProjectUrl;
+			thisPlugin.provider = pluginProvider;
+			thisPlugin.releases = new ArrayList<>();
+			
+			pluginsInfo.add(thisPlugin);
+		}
+		
+		PluginRelease thisRelease = null;
+		for(PluginRelease release : thisPlugin.releases) {
+			if(release.version.equals(project.getVersion())) {
+				thisRelease = release;
+				break;
+			}
+		}
+		
+		if(Objects.isNull(thisRelease)) {
+			thisRelease = new PluginRelease();
+		}
+		
+		thisRelease.date = new Date();
+		thisRelease.requires = pluginDependencies;
+		thisRelease.sha512sum = sha512Hash;
+		thisRelease.url = pluginId + "/" + zipfile.getName();
+		thisRelease.version = project.getVersion();
+
+		thisPlugin.releases.add(thisRelease);
+		
+		FileUtils.copyFileIfModified(zipfile, new File(repositoryPath, pluginId));
+		FileUtils.fileWrite(pluginsFile.getAbsolutePath(), gson.toJson(pluginsInfo));
+		
+	}
+
 	private void generateProperties(ZipOutputStream zip) throws MojoFailureException, IOException {
 		
 		String pluginId = project.getModel().getProperties().getProperty("plugin.id");
