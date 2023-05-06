@@ -24,7 +24,9 @@ import java.util.List;
  */
 public class PluginInfo implements Serializable, Comparable<PluginInfo> {
 
-    public String id;
+	private static final long serialVersionUID = 1L;
+
+	public String id;
     public String name;
     public String description;
     public String provider;
@@ -65,7 +67,9 @@ public class PluginInfo implements Serializable, Comparable<PluginInfo> {
      */
     public static class PluginRelease implements Serializable {
 
-        public String version;
+		private static final long serialVersionUID = 1L;
+
+		public String version;
         public Date date;
         public String requires;
         public String url;
