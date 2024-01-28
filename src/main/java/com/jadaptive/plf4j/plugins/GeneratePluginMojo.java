@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -65,6 +67,9 @@ public class GeneratePluginMojo extends AbstractMojo {
 
 	@Parameter(defaultValue = "true")
 	protected Boolean copyDependencies = true;
+
+	@Parameter(defaultValue = "true")
+	protected Boolean useLinksForCopyDependencies = true;
 	
 	@Parameter(defaultValue = "target/lib")
 	protected String copyDependenciesPath = "target/lib";
@@ -177,7 +182,15 @@ public class GeneratePluginMojo extends AbstractMojo {
 					
 						if(copyDependencies) {
 							File artifactFile = new File(copyDependenciesFolder, resolvedFile.getName());
-							FileUtils.copyFile(resolvedFile, artifactFile);
+							if(useLinksForCopyDependencies) {
+								Path artifactPath = artifactFile.toPath();
+								Files.deleteIfExists(artifactPath);
+								Files.createDirectories(artifactPath.getParent());
+								Files.createSymbolicLink(artifactPath, resolvedFile.toPath());
+							}
+							else {
+								FileUtils.copyFile(resolvedFile, artifactFile);
+							}
 						}
 					}
 				}
