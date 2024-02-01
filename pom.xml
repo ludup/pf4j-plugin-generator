@@ -43,6 +43,7 @@
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-plugin-api</artifactId>
 			<version>2.0.9</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.maven.plugin-tools</groupId>
@@ -53,6 +54,7 @@
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-project</artifactId>
 			<version>2.0.9</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>commons-codec</groupId>
@@ -122,7 +124,7 @@
 							<goal>read-project-properties</goal>
 						</goals>
 						<configuration>
-							<quiet>false</quiet>
+							<quiet>true</quiet>
 							<files>
 								<file>${build.projectProperties}</file>
 								<file>${build.userProperties}</file>
