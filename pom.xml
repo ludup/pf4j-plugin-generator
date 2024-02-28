@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sshtools</groupId>
 	<artifactId>pf4j-plugin-generator</artifactId>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.1.1</version>
 	<packaging>maven-plugin</packaging>
 	<url>https://github.com/ludup/pf4j-plugin-generator</url>
 	<name>PF4J Plugin Generator</name>
