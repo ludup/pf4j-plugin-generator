@@ -284,7 +284,7 @@ public class GeneratePluginMojo extends AbstractMojo {
 		
 		addedPaths.add(path);
 		
-		ZipEntry e = new ZipEntry(path);
+		ZipEntry e = new ZipEntry(path.replace('\\', '/'));
 		
 		zip.putNextEntry(e);
 
@@ -319,7 +319,7 @@ public class GeneratePluginMojo extends AbstractMojo {
 				zipAndRecurse(child, parent, zip);
 			}
 		} else {
-			String name = file.getAbsolutePath().replace(parent.getAbsolutePath(), "");
+			String name = file.getAbsolutePath().replace(parent.getAbsolutePath(), "").replace('\\', '/');
 			if(name.startsWith("/")) {
 				name = name.substring(1);
 			}
