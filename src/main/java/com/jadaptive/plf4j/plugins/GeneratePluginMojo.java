@@ -23,22 +23,15 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -52,10 +45,6 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.StringUtils;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.jadaptive.plf4j.plugins.PluginInfo.PluginRelease;
 
 @Mojo(name = "generate-plugin", requiresProject = false, defaultPhase = LifecyclePhase.INSTALL, requiresDependencyCollection = ResolutionScope.RUNTIME, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class GeneratePluginMojo extends AbstractMojo {
@@ -74,11 +63,8 @@ public class GeneratePluginMojo extends AbstractMojo {
 	@Parameter(defaultValue = "target/lib")
 	protected String copyDependenciesPath = "target/lib";
 	
-	@Parameter(defaultValue = "true")
-	protected Boolean createRepository = true;
-	
 	@Parameter(defaultValue = "target/repository")
-	protected String repositoryPath = "target/repository";
+	private String repositoryPath = "target/repository";
 	
 	@Parameter(defaultValue = "false")
 	protected Boolean artifactIsPlugin = true;
@@ -203,23 +189,6 @@ public class GeneratePluginMojo extends AbstractMojo {
 			
 			}
 			
-			if(createRepository) {
-				
-				if(artifactIsPlugin) {
-					try(InputStream in = new FileInputStream(project.getArtifact().getFile())) {
-						addToRepository(project.getArtifact().getFile(), 
-								DigestUtils.sha512Hex(in), 
-									new File(repositoryPath));
-					}
-				} else {
-					try(InputStream in = new FileInputStream(zipfile)) {
-						addToRepository(zipfile,
-								DigestUtils.sha512Hex(in),
-									new File(repositoryPath));
-					}
-				}
-			}
-			
 		} catch (Exception e) {
 			getLog().error(e);
 			throw new MojoExecutionException(
@@ -334,75 +303,6 @@ public class GeneratePluginMojo extends AbstractMojo {
 		}
 	}
 
-
-	private void addToRepository(File zipfile, String sha512Hash, File repositoryPath) throws IOException {
-	
-		Gson json = new GsonBuilder().registerTypeAdapter(Date.class, new LenientDateTypeAdapter()).create();
-		List<PluginInfo> pluginsInfo = new ArrayList<>();
-		File pluginsFile = new File(repositoryPath, "plugins.json");
-		getLog().info("Writing repository to " + pluginsFile.getAbsolutePath());
-		pluginsFile.getParentFile().mkdirs();
-
-		if(pluginsFile.exists()) {
-			try(InputStream in = new FileInputStream(pluginsFile)) {
-				 pluginsInfo.addAll(Arrays.asList(
-						 json.fromJson(new InputStreamReader(in), PluginInfo[].class)));
-			}
-		}
-		
-		String pluginId = project.getProperties().getProperty("plugin.id");
-		String pluginDescription = project.getDescription();
-		String pluginName = project.getName();
-		String pluginProjectUrl = project.getProperties().getProperty("plugin.projectUrl");
-		String pluginProvider = project.getProperties().getProperty("plugin.provider");
-		String pluginDependencies = project.getProperties().getProperty("plugin.dependencies");
-		
-		PluginInfo thisPlugin = null;
-		for(PluginInfo pluginInfo : pluginsInfo) {
-			if(pluginInfo.id.equals(pluginId)) {
-				thisPlugin = pluginInfo;
-				break;
-			}
-		}
-		
-		if(Objects.isNull(thisPlugin)) {
-			thisPlugin = new PluginInfo();
-			thisPlugin.id = pluginId;
-			thisPlugin.description = pluginDescription;
-			thisPlugin.name = pluginName;
-			thisPlugin.projectUrl = pluginProjectUrl;
-			thisPlugin.provider = pluginProvider;
-			thisPlugin.releases = new ArrayList<>();
-			thisPlugin.setRepositoryId("testing");
-			pluginsInfo.add(thisPlugin);
-		}
-		
-		PluginRelease thisRelease = null;
-		for(PluginRelease release : thisPlugin.releases) {
-			if(release.version.equals(project.getVersion())) {
-				thisRelease = release;
-				break;
-			}
-		}
-		
-		if(Objects.isNull(thisRelease)) {
-			thisRelease = new PluginRelease();
-		}
-		
-		thisRelease.date = new Date();
-		thisRelease.requires = pluginDependencies;
-		thisRelease.sha512sum = sha512Hash;
-		thisRelease.url = pluginId + "/" + zipfile.getName();
-		thisRelease.version = project.getVersion();
-
-		thisPlugin.releases.add(thisRelease);
-		
-		File dir = new File(repositoryPath, pluginId);
-		dir.mkdirs();
-		FileUtils.copyFileToDirectory(zipfile, dir);
-		FileUtils.fileWrite(pluginsFile.getAbsolutePath(), json.toJson(pluginsInfo));
-		
-	}
 	
 	
 }
